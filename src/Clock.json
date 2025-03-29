@@ -1,0 +1,49 @@
+{
+    "top_module": "Clock",
+    "top_ports": {
+      "clk": { "direction": "input", "width": 1 },
+      "clear": { "direction": "input", "width": 1 }
+    },
+    "instances": {
+      "sec_ones": {
+        "module": "Counter10",
+        "connect": {
+          "inc": "1",
+          "inc_next": "sec_ones_inc_next"
+        },
+        "output_map": {
+          "out": { "signal": "sec_ones", "width": 4 }
+        }
+      },
+      "sec_tens": {
+        "module": "Counter6",
+        "connect": {
+          "inc": "sec_ones_inc_next",
+          "inc_next": "sec_tens_inc_next"
+        },
+        "output_map": {
+          "out": { "signal": "sec_tens", "width": 4 }
+        }
+      },
+      "min_ones": {
+        "module": "Counter10",
+        "connect": {
+          "inc": "sec_tens_inc_next",
+          "inc_next": "min_ones_inc_next"
+        },
+        "output_map": {
+          "out": { "signal": "min_ones", "width": 4 }
+        }
+      },
+      "min_tens": {
+        "module": "Counter6",
+        "connect": {
+          "inc": "min_ones_inc_next",
+          "inc_next": "min_tens_inc_next"
+        },
+        "output_map": {
+          "out": { "signal": "min_tens", "width": 4 }
+        }
+      }
+    }
+  }
