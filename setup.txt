@@ -1,0 +1,9 @@
+PLATFORM = 
+DESIGN_NAME = 
+DESIGN_NICKNAME = 
+CORE_UTILIZATION = 
+PLACE_DENSITY = 
+
+clk_period = 
+
+submodules = A,B,C
