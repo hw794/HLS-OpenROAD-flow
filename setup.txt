@@ -1,13 +1,18 @@
 # config.mk
-PLATFORM = 
+PLATFORM = asap7
 DESIGN_NAME = SystolicArray
-DESIGN_NICKNAME = 
-CORE_UTILIZATION = 
-PLACE_DENSITY = 
+DESIGN_NICKNAME = xiaokun
+CORE_UTILIZATION = 20
+CORE_ASPECT_RATIO = 1
+CORE_MARGIN = 2
+PLACE_DENSITY = 0.65
 
 # constraint.sdc
-clk_period = 
+clk_period = 475
+clk_io_pct = 0.3
 
 # generate_files
+submodules = PE
+connection = systolic_array
 submodules = PE
 connection = systolic_array

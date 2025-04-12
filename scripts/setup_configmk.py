@@ -103,7 +103,7 @@ def validate_and_complete_config(raw):
     config["CORE_MARGIN"] = str(core_margin)
 
     # VERILOG_FILES and SDC_FILE
-    verilog_path = f"$(sort $(wildcard $(DESIGN_HOME)/src/{design_name}/*.v))"
+    verilog_path = f"$(sort $(wildcard $(DESIGN_HOME)/src/{design_nickname}/*.v))"
     sdc_path = f"$(DESIGN_HOME)/{platform}/{design_nickname}/constraint.sdc"
 
     config["VERILOG_FILES"] = verilog_path
