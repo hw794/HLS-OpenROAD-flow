@@ -1,9 +1,13 @@
+# config.mk
 PLATFORM = 
 DESIGN_NAME = 
 DESIGN_NICKNAME = 
 CORE_UTILIZATION = 
 PLACE_DENSITY = 
 
+# constraint.sdc
 clk_period = 
 
-submodules = A,B,C
+# generate_files
+submodules = 
+connection = 
