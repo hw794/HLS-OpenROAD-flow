@@ -2,11 +2,9 @@ import re
 import json
 import os
 
-# 原有路径定义保持不变，此处假设 src 和 build 文件夹在项目根目录下
 SRC_DIR = "../src"
 OUT_DIR = "../build"
 
-#### 修改: 更新 setup.txt 路径，因脚本在 scripts 文件夹内，所以需要退回一级目录
 SETUP_FILE = "../setup.txt"  
 
 def parse_verilog(file_path):
@@ -24,7 +22,6 @@ def parse_verilog(file_path):
         module_name = match.group(1)
         module_ports = {}
 
-        # 提取 module 声明中的端口
         for port_match in port_pattern.finditer(match.group(2)):
             direction = port_match.group(1)
             width = port_match.group(2)
@@ -36,7 +33,6 @@ def parse_verilog(file_path):
                 "width": int(width[1:-1].split(":")[0]) + 1 if width else 1
             }
 
-        # 提取内部定义的端口
         module_start = verilog_code.find(f"module {module_name}") + len(f"module {module_name}")
         module_body = verilog_code[module_start:]
 
@@ -72,13 +68,9 @@ def generate_submodule_configs(verilog_files):
             json.dump(module_config, json_file, indent=2)
         print(f" Saved {filename}")
 
-#### 修改: 新增函数 parse_setup_file，用于解析 setup.txt 中 submodules 信息
 def parse_setup_file(file_path):
     """
-    解析 setup.txt 文件，提取 submodules 信息。
-    文件中submodules这一行的格式类似：
-        submodules = counter6, counter10
-    返回值为每个模块名加上后缀 .v 的列表。
+    parse setup.txt
     """
     submodules = []
     if not os.path.exists(file_path):
@@ -88,7 +80,6 @@ def parse_setup_file(file_path):
     with open(file_path, "r") as f:
         for line in f:
             line = line.strip()
-            # 跳过空行或注释行
             if not line or line.startswith("#"):
                 continue
             if line.startswith("submodules"):
@@ -99,15 +90,12 @@ def parse_setup_file(file_path):
                 for mod in modules:
                     mod_name = mod.strip()
                     if mod_name:
-                        # 如果模块名没有 .v 后缀，则添加
                         if not mod_name.endswith(".v"):
                             mod_name += ".v"
                         submodules.append(mod_name)
                 break
     return submodules
-#### 修改结束
 
-# 根据 setup.txt 解析 submodules，此处调用新增的 parse_setup_file
 verilog_files = parse_setup_file(SETUP_FILE)
 print("Verilog files to process:", verilog_files)
 

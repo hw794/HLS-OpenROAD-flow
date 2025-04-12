@@ -9,9 +9,9 @@ def generate_submodule_config(connection_json_file, submodule_files):
     with open(os.path.join(SRC_DIR, connection_json_file), "r") as json_file:
         connection_config = json.load(json_file)
 
-    # Extract top_module from Clock.json
+    # Extract top_module from connection_config.json
     if "top_module" not in connection_config:
-        raise KeyError("Missing 'top_module' in Clock.json")
+        raise KeyError("Missing 'top_module' in connection_config.json")
 
     top_module = connection_config["top_module"]
     instances = connection_config["instances"]
@@ -72,12 +72,9 @@ def generate_submodule_config(connection_json_file, submodule_files):
 
     print("Saved topmodule_config.json")
 
-
-#### 修改: 新增函数 parse_setup_file，从 setup.txt 中解析 connection 和 submodules 配置
 def parse_setup_file(file_path):
     """
-    解析 setup.txt 文件，提取 connection 和 submodules 信息。
-    示例文件格式：
+    setup.txt
         # config.mk
         PLATFORM = 
         DESIGN_NAME = 
@@ -91,9 +88,6 @@ def parse_setup_file(file_path):
         # generate_files
         submodules = counter6, counter10
         connection = systolic_array
-
-    对于 submodules，转换为文件名格式："module_<模块名小写>_config.json"；
-    对于 connection，如果没有 .json 后缀，则自动添加。
     """
     connection = None
     submodules = []
@@ -104,7 +98,6 @@ def parse_setup_file(file_path):
     with open(file_path, "r") as f:
         for line in f:
             line = line.strip()
-            # 跳过空行和注释行
             if not line or line.startswith("#"):
                 continue
             if line.startswith("submodules"):
@@ -115,7 +108,6 @@ def parse_setup_file(file_path):
                 for mod in mods:
                     mod_name = mod.strip()
                     if mod_name:
-                        # 转换为模块配置文件名格式
                         filename = f"module_{mod_name.lower()}_config.json"
                         submodules.append(filename)
             elif line.startswith("connection"):
@@ -128,15 +120,11 @@ def parse_setup_file(file_path):
                         conn += ".json"
                     connection = conn
     return connection, submodules
-#### 修改结束
 
-#### 修改: 修改示例调用部分，从 setup.txt 中解析 connection 和 submodules 配置
-SETUP_FILE = "../setup.txt"  # 脚本在 scripts 文件夹下，setup.txt 与 scripts 同级
+SETUP_FILE = "../setup.txt"  
 connection_json_file, submodule_files = parse_setup_file(SETUP_FILE)
 
 print("Connection JSON file:", connection_json_file)
 print("Submodule config files:", submodule_files)
-#### 修改结束
 
-# 调用生成配置的函数
 generate_submodule_config(connection_json_file, submodule_files)

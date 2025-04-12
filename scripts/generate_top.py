@@ -25,10 +25,9 @@ def format_wire(width, name):
     width_str = f"[{width-1}:0] " if width > 1 else ""
     return f"  wire {width_str}{name};"
 
-#### 修改: 修改 generate_top_verilog 函数，添加 design_name 参数，用于生成文件名
 def generate_top_verilog(connection_config_file, submodule_files, design_name):
     """Generate top-level Verilog code based on connection_config.json and submodule configs."""
-    # 修改点：从 SRC_DIR 而非 OUT_DIR 读取 connection_config_file
+    
     with open(os.path.join(SRC_DIR, connection_config_file), "r") as json_file:
         connection_config = json.load(json_file)
 
@@ -101,17 +100,10 @@ def generate_top_verilog(connection_config_file, submodule_files, design_name):
         verilog_file.write(verilog_code)
 
     print(f"Saved {design_name}.v")
-#### 修改结束
 
-#### 修改: 新增 parse_setup_file 函数，从 setup.txt 中解析 DESIGN_NAME、connection 和 submodules 信息
 def parse_setup_file(file_path):
     """
-    解析 setup.txt 文件，提取以下配置信息：
-      - DESIGN_NAME: 用于生成顶层 Verilog 文件的文件名
-      - connection: connection_config.json 的前缀（若没有 .json 后缀，则自动添加）
-      - submodules: submodules 列表，转换为文件名格式 "module_<模块名小写>_config.json"
-
-    示例文件格式：
+    setup.txt
         # config.mk
         PLATFORM = 
         DESIGN_NAME = SystolicArray
@@ -160,16 +152,12 @@ def parse_setup_file(file_path):
                         conn += ".json"
                     connection = conn
     return design_name, connection, submodules
-#### 修改结束
 
-#### 修改: 示例调用部分，从 setup.txt 中提取 DESIGN_NAME、connection 和 submodules 配置
-SETUP_FILE = os.path.join(SCRIPT_DIR, "../setup.txt")  # setup.txt 与 scripts 文件夹并列
+SETUP_FILE = os.path.join(SCRIPT_DIR, "../setup.txt")  
 design_name, connection_config_file, submodule_files = parse_setup_file(SETUP_FILE)
 
 print("DESIGN_NAME:", design_name)
 print("Connection JSON file:", connection_config_file)
 print("Submodule config files:", submodule_files)
-#### 修改结束
 
-# 调用生成 Top-level Verilog 的函数，传入 DESIGN_NAME 用于文件命名
 generate_top_verilog(connection_config_file, submodule_files, design_name)

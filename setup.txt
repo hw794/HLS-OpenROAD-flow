@@ -1,6 +1,6 @@
 # config.mk
 PLATFORM = 
-DESIGN_NAME = 
+DESIGN_NAME = SystolicArray
 DESIGN_NICKNAME = 
 CORE_UTILIZATION = 
 PLACE_DENSITY = 
@@ -9,5 +9,5 @@ PLACE_DENSITY =
 clk_period = 
 
 # generate_files
-submodules = 
-connection = 
+submodules = PE
+connection = systolic_array
