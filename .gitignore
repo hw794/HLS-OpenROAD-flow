@@ -1,0 +1,7 @@
+# vscode config
+.vscode
+
+# Catapult HLS outputs
+hls/Catapult
+hls/Catapult.ccs
+hls/catapult.log
