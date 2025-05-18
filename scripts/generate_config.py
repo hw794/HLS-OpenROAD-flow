@@ -4,12 +4,13 @@ import os
 SRC_DIR = "../src"
 OUT_DIR = "../build"
 
-def generate_submodule_config(connection_json_file, submodule_files):
-    """Generate connection_config.json based on Clock.json and submodule configs."""
+def generate_submodule_config(connection_json_file, top_submodule_file):
+    """Generate connection_config.json based on connection file and the top submodule config."""
+    #  read connection JSON file from SRC_DIR
     with open(os.path.join(SRC_DIR, connection_json_file), "r") as json_file:
         connection_config = json.load(json_file)
 
-    # Extract top_module from connection_config.json
+    # Extract top_module from connection_config.json (note: field name remains top_module)
     if "top_module" not in connection_config:
         raise KeyError("Missing 'top_module' in connection_config.json")
 
@@ -17,16 +18,13 @@ def generate_submodule_config(connection_json_file, submodule_files):
     instances = connection_config["instances"]
     top_ports = connection_config["top_ports"]
 
-    # Read submodule configs
-    submodules = {}
-    for file in submodule_files:
-        with open(os.path.join(OUT_DIR, file), "r") as json_file:
-            submodule_data = json.load(json_file)
-            submodules[submodule_data["submodule"]] = submodule_data
+    with open(os.path.join(OUT_DIR, top_submodule_file), "r") as json_file:
+        submodule_data = json.load(json_file)
+        submodules = { submodule_data["submodule"].lower(): submodule_data }
 
     # Process Instances
     for instance_name, instance_data in instances.items():
-        module_name = instance_data["module"]
+        module_name = instance_data["module"].lower()
         if module_name not in submodules:
             raise ValueError(f"Module '{module_name}' not found in submodule configs")
 
@@ -50,7 +48,7 @@ def generate_submodule_config(connection_json_file, submodule_files):
             if port in module_config["ports"]:
                 exposed_ports[mapping["signal"]] = {
                     "direction": "output",
-                    "type": "logic",
+                    "type": "wire",
                     "width": mapping["width"]
                 }
 
@@ -72,28 +70,39 @@ def generate_submodule_config(connection_json_file, submodule_files):
 
     print("Saved topmodule_config.json")
 
+
 def parse_setup_file(file_path):
     """
-    setup.txt
+    Parse the setup.json file and extract the following fields:
+
+    connection: Retrieved from the "connection" field (ensure the suffix is .json)
+    submodules: Retrieved from the "submodules" field (used as a reference only)
+    top_submodule: Retrieved from the "top_submodule" field, used to specify the top-level submodule (e.g., "pe")
+        
+    Example Format:
         # config.mk
-        PLATFORM = 
-        DESIGN_NAME = 
-        DESIGN_NICKNAME = 
-        CORE_UTILIZATION = 
-        PLACE_DENSITY = 
+        PLATFORM = asap7
+        DESIGN_NAME = SystolicArray
+        DESIGN_NICKNAME = xiaokun
+        CORE_UTILIZATION = 20
+        PLACE_DENSITY = 0.65
 
         # constraint.sdc
-        clk_period = 
+        clk_period = 475
+        clk_io_pct = 0.3
 
         # generate_files
-        submodules = counter6, counter10
+        submodules = rtl
+        top_submodule = pe
         connection = systolic_array
     """
     connection = None
     submodules = []
+    top_submodule = None
+
     if not os.path.exists(file_path):
         print(f"File {file_path} does not exist.")
-        return connection, submodules
+        return connection, submodules, top_submodule
 
     with open(file_path, "r") as f:
         for line in f:
@@ -108,7 +117,7 @@ def parse_setup_file(file_path):
                 for mod in mods:
                     mod_name = mod.strip()
                     if mod_name:
-                        filename = f"module_{mod_name.lower()}_config.json"
+                        filename = f"submodule_{mod_name.lower()}_config.json"
                         submodules.append(filename)
             elif line.startswith("connection"):
                 parts = line.split("=")
@@ -119,12 +128,25 @@ def parse_setup_file(file_path):
                     if not conn.endswith(".json"):
                         conn += ".json"
                     connection = conn
-    return connection, submodules
+            elif line.startswith("top_submodule"):
+                parts = line.split("=")
+                if len(parts) < 2:
+                    continue
+                top_submodule = parts[1].strip()
+    return connection, submodules, top_submodule
 
-SETUP_FILE = "../setup.txt"  
-connection_json_file, submodule_files = parse_setup_file(SETUP_FILE)
+SETUP_FILE = "../setup.json"  
+connection_json_file, submodule_files, top_submodule = parse_setup_file(SETUP_FILE)
 
 print("Connection JSON file:", connection_json_file)
-print("Submodule config files:", submodule_files)
+print("Submodule config files (from submodules field):", submodule_files)
+print("Top submodule:", top_submodule)
 
-generate_submodule_config(connection_json_file, submodule_files)
+if top_submodule:
+    top_submodule_file = f"submodule_{top_submodule.lower()}_config.json"
+else:
+    top_submodule_file = None
+
+generate_submodule_config(connection_json_file, top_submodule_file)
+
+

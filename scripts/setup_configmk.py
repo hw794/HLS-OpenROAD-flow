@@ -1,152 +1,100 @@
-import re
-import sys
+import json
 import os
 
-DEFAULTS = {
-    "PLATFORM": "asap7",
-    "CLK_PERIOD": "475",
-    "CLK_IO_PCT": "0.2",
-    "CORE_ASPECT_RATIO": "1.0",
-    "CORE_MARGIN": "5"
-}
+# Ensure build directory exists
+os.makedirs('../build', exist_ok=True)
 
-VALID_PLATFORMS = {"asap7", "nangate45"}
-BUILD_DIR = "../build"
+# Load setup.json
+with open('../setup.json', 'r') as f:
+    setup = json.load(f)
 
-def load_config_txt(file="../setup.txt"):
-    raw_config = {}
-    try:
-        with open(file, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
+# Extract configuration sections
+config = setup["config_mk"]
+platform = config["PLATFORM"]
+design_name = config["DESIGN_NAME"]
+design_nickname = config["DESIGN_NICKNAME"]
 
-                # Match lines like: export VAR = value OR VAR = value
-                match = re.match(r'^(?:export\s+)?(\w+)\s*=\s*(.+)$', line)
-                if match:
-                    key, value = match.groups()
-                    raw_config[key.strip()] = value.strip()
-    except FileNotFoundError:
-        print(f"[Error] {file} not found.")
-        sys.exit(1)
-    return raw_config
+constraint_sdc = setup.get("constraint_sdc", {})
+macro_cfg = setup.get("macro_config", {})
+manual_area_cfg = setup.get("manual_area_config", {})
+generate_files = setup.get("generate_files", [])
 
-def validate_and_complete_config(raw):
-    config = {}
+# Flags
+macro_enabled = macro_cfg.get("enable", False)
+macro_add_annealing = macro_cfg.get("add_place_pins_args", False)
+top_add_annealing = setup.get("add_place_pins_args", False)
+manual_area_enabled = manual_area_cfg.get("enable", False)
 
-    # PLATFORM
-    platform = raw.get("PLATFORM", "").strip()
-    if not platform:
-        platform = DEFAULTS["PLATFORM"]
-    if platform not in VALID_PLATFORMS:
-        raise ValueError(f"Invalid PLATFORM '{platform}'. Must be 'asap7' or 'nangate45'.")
-    config["PLATFORM"] = platform
+# -----------------------------------------------------------------------------
+# Write to config.mk
+# -----------------------------------------------------------------------------
 
-    # DESIGN_NAME (required)
-    design_name = raw.get("DESIGN_NAME", "").strip()
-    if not design_name:
-        raise ValueError("DESIGN_NAME is required.")
-    config["DESIGN_NAME"] = design_name
+with open('../build/config.mk', 'w') as f:
+    for key, value in config.items():
+        if manual_area_enabled and key == "CORE_UTILIZATION":
+            continue  # Skip writing CORE_UTILIZATION if manual area is enabled
+        f.write(f"export {key} = {value}\n")
 
-    # DESIGN_NICKNAME (optional)
-    design_nickname = raw.get("DESIGN_NICKNAME", "").strip()
-    if not design_nickname:
-        design_nickname = design_name
-    config["DESIGN_NICKNAME"] = design_nickname
+    if manual_area_enabled:
+        die_area = manual_area_cfg.get("DIE_AREA", [])
+        core_area = manual_area_cfg.get("CORE_AREA", [])
+        if len(die_area) == 4:
+            f.write(f"export DIE_AREA  = {' '.join(map(str, die_area))}\n")
+        if len(core_area) == 4:
+            f.write(f"export CORE_AREA = {' '.join(map(str, core_area))}\n")
 
-    # CORE_UTILIZATION
-    try:
-        core_util = float(raw.get("CORE_UTILIZATION", ""))
-        if not (0 < core_util < 100):
-            raise ValueError
-    except ValueError:
-        raise ValueError("CORE_UTILIZATION must be a number between 0 and 100 (exclusive).")
-    config["CORE_UTILIZATION"] = str(core_util)
+    if top_add_annealing or macro_add_annealing:
+        f.write("export PLACE_PINS_ARGS = -annealing\n")
 
-    # PLACE_DENSITY
-    place_density_str = raw.get("PLACE_DENSITY", "")
-    if not re.match(r"^0\.\d{1,2}$|^1\.00$", place_density_str):
-        raise ValueError("PLACE_DENSITY must be a decimal between 0 and 1 with up to two digits after the decimal point.")
-    config["PLACE_DENSITY"] = place_density_str
+    if macro_enabled:
+        f.write(f"export BLOCKS ?= {macro_cfg['macro_names']}\n")
+        f.write("export SYNTH_HIERARCHICAL = 1\n")
 
-    # CLK_PERIOD
-    clk_period = raw.get("clk_period", DEFAULTS["CLK_PERIOD"])
-    try:
-        float(clk_period)
-    except ValueError:
-        raise ValueError("clk_period must be a number.")
-    config["CLK_PERIOD"] = clk_period
+    f.write(f"export VERILOG_FILES = $(sort $(wildcard ./designs/src/{design_nickname}/*.v))\n")
+    f.write(f"export SDC_FILE      = ./designs/{platform}/{design_nickname}/constraint.sdc\n")
+    f.write(f"export GND_NETS_VOLTAGES      =\n")
+    f.write(f"export PWR_NETS_VOLTAGES      =\n")
 
-    # CLK_IO_PCT
-    clk_io_pct = raw.get("clk_io_pct", DEFAULTS["CLK_IO_PCT"])
-    if not re.match(r"^0\.\d{1,2}$|^1\.00$", clk_io_pct):
-        raise ValueError("clk_io_pct must be a decimal between 0 and 1 with up to two digits after the decimal point.")
-    config["CLK_IO_PCT"] = clk_io_pct
+# -----------------------------------------------------------------------------
+# Write to constraint.sdc
+# -----------------------------------------------------------------------------
 
-    # CORE_ASPECT_RATIO
-    try:
-        aspect_ratio = float(raw.get("CORE_ASPECT_RATIO", DEFAULTS["CORE_ASPECT_RATIO"]))
-        if not (0.5 <= aspect_ratio <= 5):
-            raise ValueError
-    except ValueError:
-        raise ValueError("CORE_ASPECT_RATIO must be a number between 0.5 and 5.")
-    config["CORE_ASPECT_RATIO"] = str(aspect_ratio)
+with open('../build/constraint.sdc', 'w') as f:
+    clk_period = constraint_sdc.get("clk_period", 475)
+    clk_io_pct = constraint_sdc.get("clk_io_pct", 0.3)
+    f.write("set clk_name  clk\n")
+    f.write("set clk_port_name clk\n")
+    f.write(f"set clk_period {clk_period}\n")
+    f.write(f"set clk_io_pct {clk_io_pct}\n\n")
+    f.write("set clk_port [get_ports $clk_port_name]\n\n")
+    f.write("create_clock -name $clk_name -period $clk_period $clk_port\n\n")
+    f.write("set non_clock_inputs [lsearch -inline -all -not -exact [all_inputs] $clk_port]\n\n")
+    f.write("set_input_delay  [expr $clk_period * $clk_io_pct] -clock $clk_name $non_clock_inputs\n")
+    f.write("set_output_delay [expr $clk_period * $clk_io_pct] -clock $clk_name [all_outputs]\n")
 
-    # CORE_MARGIN
-    try:
-        core_margin = int(raw.get("CORE_MARGIN", DEFAULTS["CORE_MARGIN"]))
-        if not (2 <= core_margin <= 20):
-            raise ValueError
-    except ValueError:
-        raise ValueError("CORE_MARGIN must be an integer between 2 and 20.")
-    config["CORE_MARGIN"] = str(core_margin)
+# -----------------------------------------------------------------------------
+# Write to generate_files
+# -----------------------------------------------------------------------------
 
-    # VERILOG_FILES and SDC_FILE
-    verilog_path = f"$(sort $(wildcard $(DESIGN_HOME)/src/{design_nickname}/*.v))"
-    sdc_path = f"$(DESIGN_HOME)/{platform}/{design_nickname}/constraint.sdc"
+with open('../build/generate_files', 'w') as f:
+    for entry in generate_files:
+        f.write(f"submodules = {entry['submodules']}\n")
+        f.write(f"connection = {entry['connection']}\n")
+        if 'top_submodule' in entry:
+            f.write(f"top_submodule = {entry['top_submodule']}\n")
 
-    config["VERILOG_FILES"] = verilog_path
-    config["SDC_FILE"] = sdc_path
+# -----------------------------------------------------------------------------
+# Conditionally write block.mk (only if macro_enabled)
+# -----------------------------------------------------------------------------
 
-    return config
-
-def write_config_mk(config, filename=f"{BUILD_DIR}/config.mk"):
-    os.makedirs(BUILD_DIR, exist_ok=True)
-    with open(filename, "w") as f:
-        f.write("# Auto-generated config.mk\n")
-        for key in [
-            "PLATFORM", "DESIGN_NAME", "DESIGN_NICKNAME", "CORE_UTILIZATION",
-            "PLACE_DENSITY", "CORE_ASPECT_RATIO", "CORE_MARGIN",
-            "VERILOG_FILES", "SDC_FILE"
-        ]:
-            f.write(f'export {key:<20} = {config[key]}\n')
-    print(f"[Success] {filename} generated.")
-
-def write_constraint_sdc(config, filename=f"{BUILD_DIR}/constraint.sdc"):
-    os.makedirs(BUILD_DIR, exist_ok=True)
-    with open(filename, "w") as f:
-        f.write("# Auto-generated constraint.sdc\n\n")
-        f.write("set clk_name       clk\n")
-        f.write("set clk_port_name  clk\n")
-        f.write(f"set clk_period     {config['CLK_PERIOD']}\n")
-        f.write(f"set clk_io_pct     {config['CLK_IO_PCT']}\n\n")
-        f.write("set clk_port [get_ports $clk_port_name]\n\n")
-        f.write("create_clock -name $clk_name -period $clk_period $clk_port\n\n")
-        f.write("set non_clock_inputs [lsearch -inline -all -not -exact [all_inputs] $clk_port]\n\n")
-        f.write("set_input_delay  [expr $clk_period * $clk_io_pct] -clock $clk_name $non_clock_inputs\n")
-        f.write("set_output_delay [expr $clk_period * $clk_io_pct] -clock $clk_name [all_outputs]\n")
-    print(f"[Success] {filename} generated.")
-
-def main():
-    try:
-        raw_config = load_config_txt()
-        config = validate_and_complete_config(raw_config)
-        write_config_mk(config)
-        write_constraint_sdc(config)
-    except Exception as e:
-        print(f"[Error] {e}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+if macro_enabled:
+    with open('../build/block.mk', 'w') as f:
+        f.write(f"export PLATFORM = {macro_cfg['PLATFORM']}\n")
+        f.write(f"export CORE_UTILIZATION = {macro_cfg['CORE_UTILIZATION']}\n")  # Always keep this in block.mk
+        f.write(f"export CORE_ASPECT_RATIO = {macro_cfg['CORE_ASPECT_RATIO']}\n")
+        f.write(f"export CORE_MARGIN = {macro_cfg['CORE_MARGIN']}\n")
+        f.write(f"export PLACE_DENSITY = {macro_cfg['PLACE_DENSITY']}\n")
+        if macro_add_annealing:
+            f.write("export PLACE_PINS_ARGS = -annealing\n")
+        f.write(f"export VERILOG_FILES = $(sort $(wildcard ./designs/src/{design_nickname}/*.v))\n")
+        f.write(f"export SDC_FILE      = ./designs/{platform}/{design_nickname}/constraint.sdc\n")
