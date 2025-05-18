@@ -1,0 +1,76 @@
+# Systolic Array Configuration
+top_module: SystolicArray
+dimensions: [2, 2]  # 2x2 array
+
+# Top-level ports
+top_ports:
+  - name: clk
+    direction: input
+    width: 1
+  - name: rst
+    direction: input
+    width: 1
+
+# Instance configurations
+instances:
+  - name: C
+    module: pe
+    array: [2, 2]
+    use_macro: true
+
+# Connections
+connections:
+  - for: 
+      i: 2
+      j: 2
+    connect: 
+      signal: "clk"
+      to: ["C-{i}_{j}.clk"]
+  - for:
+      i: 2
+      j: 2
+    connect:
+      signal: "rst"
+      to: ["C-{i}_{j}.rst"]
+  - for:
+      i: 2
+      j: 2
+    connect_handshake:
+      from: "C-{i}_{j}.right"
+      to: "C-{i}_{j+1}.left"
+  - for:
+      i: 2
+      j: 2
+    connect_handshake:
+      from: "C-{i}_{j}.down"
+      to: "C-{i+1}_{j}.up"
+  - for:
+      i: 2
+      j: 0
+    connect_handshake:
+      from: "left_in_{i}"
+      to: "C-{i}_{j}.left"
+  - for:
+      i: 0
+      j: 2
+    connect_handshake:
+      from: "up_in_{j}"
+      to: "C-{i}_{j}.up"
+  - for:
+      i: 2
+      j: 1
+    connect_handshake:
+      from: "C-{i}_{j}.right"
+      to: "right_out_{i}"
+  - for:
+      i: 1
+      j: 2
+    connect_handshake:
+      from: "C-{i}_{j}.down"
+      to: "down_out_{j}"
+  - for:
+      i: 2
+      j: 2
+    connect:
+      signal: "result_out_rsc_rdy{i*2+j}"
+      to: ["C-{i}_{j}.result_out_rsc_rdy"] 
