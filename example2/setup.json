@@ -1,0 +1,40 @@
+{
+  "config_mk": {
+    "PLATFORM": "asap7",
+    "DESIGN_NAME": "SystolicArray",
+    "DESIGN_NICKNAME": "sa_with_macro_manualPlacement",
+    "CORE_UTILIZATION": 20,
+    "CORE_ASPECT_RATIO": 1,
+    "CORE_MARGIN": 2,
+    "PLACE_DENSITY": 0.50
+  },
+  "constraint_sdc": {
+    "clk_period": 475,
+    "clk_io_pct": 0.3
+  },
+  "generate_files": [
+    {
+      "submodules": "concat_rtl",
+      "connection": "systolic_array_standard",
+      "top_submodule": "pe"
+    }
+  ],
+  "add_place_pins_args": true,
+
+  "macro_config": {
+    "enable": true,
+    "PLATFORM": "asap7",
+    "CORE_UTILIZATION": 50,
+    "CORE_ASPECT_RATIO": 1,
+    "CORE_MARGIN": 2,
+    "PLACE_DENSITY": 0.80,
+    "macro_names": "pe",
+    "add_place_pins_args": true
+  },
+
+  "manual_area_config": {
+    "enable": true,
+    "DIE_AREA": [0, 0, 200, 200],
+    "CORE_AREA": [10, 10, 190, 190]
+  }
+}

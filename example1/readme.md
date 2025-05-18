@@ -1,0 +1,3 @@
+This is an example of creating a systolic array design where each Processing Element (PE) is implemented as a hardened macro, without explicitly specifying the placement location of each PE. Instead, the tool is allowed to place the macros automatically based on the floorplanning and placement constraints. This approach simplifies the layout process but may lead to suboptimal routing if macro placement is not guided carefully.
+
+To reproduce this example, simply copy the content of the setup.json file in this directory to the setup.json file in the main directory.
