@@ -1,5 +1,5 @@
 # HLS-OpenROAD-flow
-This is a Cornell ECE M.Eng. project that aims to automate the ASIC design flow, allowing users to generate the physical design of their circuits with minimal effort. The project focuses on taking existing HLS-based RTL designs and automatically generating the physical layout.
+This is a Cornell ECE M.Eng. project by hw794 and wl764 that aims to automate the ASIC design flow, allowing users to generate the physical design of their circuits with minimal effort. The project focuses on taking existing HLS-based RTL designs and automatically generating the physical layout.
 
 To complete this project, we need to develop an end-to-end configuration that automates the tool flow from HLS (High-Level Synthesis) to ASIC layout. The deliverables will enable users to perform ASIC design using HLS and generate chip layouts more efficiently.
 
